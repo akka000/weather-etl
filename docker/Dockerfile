@@ -7,4 +7,4 @@ COPY dags/ dags/
 COPY data/ data/
 COPY logs/ logs/
 ENV PYTHONUNBUFFERED=1
-CMD ["python", "etl/fetch_weather.py"]
+CMD ["python3.11", "etl/fetch_weather.py"]

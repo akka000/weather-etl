@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:14
+    container_name: weather_postgres
     environment:
       POSTGRES_USER: manra
       POSTGRES_PASSWORD: manra
@@ -10,6 +11,23 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  etl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: weather_etl
+    depends_on:
+      - postgres
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=manra
+      - POSTGRES_PASSWORD=manra
+      - POSTGRES_DB=weatherdb
+    volumes:
+      - weather_data:/app/data
+    command: ["python3.11", "etl/fetch_weather.py"]
+
 volumes:
   postgres_data:
+  weather_data:
     driver: local
