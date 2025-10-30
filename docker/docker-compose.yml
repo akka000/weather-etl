@@ -11,6 +11,22 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  airflow:
+    image: apache/airflow:2.11.0
+    container_name: weather_airflow
+    depends on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://manra:manra@postgres/weatherdb
+    volumes:
+      - ../dags:/opt/airflow/dags
+      - ../etl:/opt/airflow/etl
+    ports:
+      - 8080:8080
+    command: bash -c "airflow db init && airflow standalone"  
+
   etl:
     build:
       context: ..
