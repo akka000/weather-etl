@@ -48,10 +48,10 @@ def save_to_postgres(records):
         return
     try:
         conn = psycopg2.connect(
-            dbname=os.getenv("POSTGRES_DB", "weatherdb"),
-            user=os.getenv("POSTGRES_USER", "manra"),
-            password=os.getenv("POSTGRES_PASSWORD", "manra"),
-            host=os.getenv("POSTGRES_HOST", "localhost"),
+            dbname=os.getenv("POSTGRES_DB"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            host=os.getenv("POSTGRES_HOST"),
             port="5432",
         )
         cur = conn.cursor()

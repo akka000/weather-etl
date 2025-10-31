@@ -3,15 +3,15 @@ services:
     image: postgres:14
     container_name: weather_postgres
     environment:
-      POSTGRES_USER: manra
-      POSTGRES_PASSWORD: manra
-      POSTGRES_DB: weatherdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U manra -d weatherdb"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -25,16 +25,16 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://manra:manra@postgres/weatherdb
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW_EXECUTOR}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW_LOAD_EXAMPLES}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     volumes:
       - ../dags:/opt/airflow/dags
       - ../etl:/opt/airflow/etl
     command: >
       bash -c "
       airflow db init &&
-      airflow users create --username admin --firstname Arman --lastname Khaxar --role Admin --email admin@example.com --password admin
+      airflow users create --username ${AIRFLOW_USER} --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --role Admin --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PASSWORD}
       "
 
   airflow:
@@ -48,9 +48,9 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://manra:manra@postgres/weatherdb
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW_EXECUTOR}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW_LOAD_EXAMPLES}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     ports:
       - "8080:8080"
     volumes:
@@ -73,10 +73,10 @@ services:
       airflow:
         condition: service_started
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: manra
-      POSTGRES_PASSWORD: manra
-      POSTGRES_DB: weatherdb
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - weather_data:/app/data
     command: ["python3.11", "etl/fetch_weather.py"]
