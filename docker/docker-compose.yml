@@ -10,35 +10,73 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manra -d weatherdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  airflow:
-    image: apache/airflow:2.11.0
-    container_name: weather_airflow
-    depends on:
-      - postgres
+  airflow-init:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: weather_airflow_init
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://manra:manra@postgres/weatherdb
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://manra:manra@postgres/weatherdb
     volumes:
       - ../dags:/opt/airflow/dags
       - ../etl:/opt/airflow/etl
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --firstname Arman --lastname Khaxar --role Admin --email admin@example.com --password admin
+      "
+
+  airflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: weather_airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://manra:manra@postgres/weatherdb
     ports:
-      - 8080:8080
-    command: bash -c "airflow db init && airflow standalone"  
+      - "8080:8080"
+    volumes:
+      - ../dags:/opt/airflow/dags
+      - ../etl:/opt/airflow/etl
+    command: >
+      bash -c "
+      exec airflow scheduler & 
+      exec airflow webserver
+      "
 
   etl:
     build:
       context: ..
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile.etl
     container_name: weather_etl
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      airflow:
+        condition: service_started
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_USER=manra
-      - POSTGRES_PASSWORD=manra
-      - POSTGRES_DB=weatherdb
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: manra
+      POSTGRES_PASSWORD: manra
+      POSTGRES_DB: weatherdb
     volumes:
       - weather_data:/app/data
     command: ["python3.11", "etl/fetch_weather.py"]
@@ -46,4 +84,3 @@ services:
 volumes:
   postgres_data:
   weather_data:
-    driver: local
